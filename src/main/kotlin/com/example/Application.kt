@@ -6,7 +6,6 @@ import com.example.config.AppProfilesEnum
 import com.example.config.ConfigurationFactory
 import com.example.config.EnvironmentEnum
 import io.ktor.server.application.*
-import com.example.plugins.*
 
 import io.ktor.server.engine.*
 import io.ktor.server.netty.Netty

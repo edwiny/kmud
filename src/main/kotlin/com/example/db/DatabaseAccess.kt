@@ -40,7 +40,7 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
         }
     }
 
-    fun createSession(acct: Account, char: Character): Session {
+    override fun createSession(acct: Account, char: Character): Session {
         var id = 0
         transaction {
             id = Sessions.insertAndGetId {
@@ -55,7 +55,7 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
         )
     }
 
-    fun updateSession(session: Session) {
+    override fun updateSession(session: Session) {
         transaction {
             Sessions.update({ Sessions.id eq session.id }) {
                 it[accountId] = session.account.id
@@ -64,7 +64,7 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
         }
     }
 
-    fun searchSessions(acct: Account): List<Session> {
+    override fun searchSessions(acct: Account): List<Session> {
         val resultList = mutableListOf<Session>()
 
         val rows = Sessions.select { Sessions.accountId eq acct.id }
@@ -88,7 +88,7 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
         return resultList
     }
 
-    fun insertCharacter(char: Character): Int {
+    override fun insertCharacter(char: Character): Int {
         var id = 0
         transaction {
             id = Characters.insertAndGetId {
@@ -99,7 +99,7 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
         return id
     }
 
-    fun findCharactersByAccount(acct: Account): List<Character> {
+    override fun findCharactersByAccount(acct: Account): List<Character> {
         val resultList = mutableListOf<Character>()
         Characters.select { Characters.owner eq acct.id }.forEach {
             resultList.add(
@@ -114,28 +114,33 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
         return resultList
     }
 
-    fun findAccountById(id: Int): Account {
+    override fun findAccountById(id: Int): Account {
         val row = Accounts.select { Accounts.id eq id }.first()
         return Account(id = id, name = row[Accounts.name], admin = row[Accounts.admin])
     }
 
-    fun findAccountByLogin(login: String): Account? {
-        val rows = Accounts.select {
-            Accounts.name eq login
-        }
+    override fun findAccountByLogin(login: String): Account? {
 
-        if (rows.count() > 0) {
-            val first = rows.first()
-            return Account(
-                id = first[Accounts.id].value,
-                name = first[Accounts.name],
-                admin = first[Accounts.admin]
-            )
+        var result : Account? = null
+
+        transaction {
+            val rows = Accounts.select {
+                Accounts.name eq login
+            }
+
+            if (rows.count() > 0) {
+                val first = rows.first()
+                result = Account(
+                    id = first[Accounts.id].value,
+                    name = first[Accounts.name],
+                    admin = first[Accounts.admin]
+                )
+            }
         }
-        return null
+        return result
     }
 
-    fun insertAccount(acct: Account): Int {
+    override fun insertAccount(acct: Account): Int {
         var id = 0
         transaction {
             id = Accounts.insertAndGetId {
