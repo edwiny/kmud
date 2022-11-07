@@ -1,7 +1,12 @@
 package com.example.model
 
+import io.ktor.websocket.*
+import java.time.LocalDateTime
+
 class Session(
-    val id: Int,
-    val account: Account,
-    var character: Character
+    var id: Int,
+    var account: Account,
+    var character: Character,
+    val startTime: LocalDateTime,
+    val socket: DefaultWebSocketSession? = null
 )

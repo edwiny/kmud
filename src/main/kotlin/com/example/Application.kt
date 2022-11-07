@@ -1,10 +1,13 @@
 package com.example
 
+import com.example.commands.CommandFailReasonEnum
+import com.example.commands.CommandResultEnum
 import com.example.commands.Interpreter
 import com.example.config.AppContextFactory
 import com.example.config.AppProfilesEnum
 import com.example.config.ConfigurationFactory
 import com.example.config.EnvironmentEnum
+import com.example.model.Session
 import io.ktor.server.application.*
 
 import io.ktor.server.engine.*
@@ -48,11 +51,13 @@ fun main(args: Array<String>) {
 
         routing {
             val connections = Collections.synchronizedSet<Connection?>(LinkedHashSet())
+
             webSocket("/chat") {
                 println("Adding user!")
                 val thisConnection = Connection(this)
+                val session = appContext.sessionService.emptySessionFromSocket(this)
                 connections += thisConnection
-                val interpreter = Interpreter(appContext)
+                val interpreter = Interpreter(appContext, session)
 
                 try {
                     send("You are connected! There are ${connections.count()} users here.")
@@ -67,14 +72,33 @@ fun main(args: Array<String>) {
                         }
 
                          */
-                        val resp = interpreter.process(receivedText)
-                        send(resp)
+                        val result = interpreter.process(receivedText)
+                        var presentation: String = ""
+                        presentation = when (result.status) {
+                            CommandResultEnum.COMPLETE -> result.presentation ?: ""
+                            CommandResultEnum.FAIL -> {
+                                when (result.failReason) {
+                                    CommandFailReasonEnum.INVALID -> "Whoops! ${result.presentation ?: ""}"
+                                    CommandFailReasonEnum.SYNTAX -> "That is not quite right, here is how the command works:! ${result.presentation ?: ""}"
+                                    CommandFailReasonEnum.INTERNAL_ERROR -> throw java.lang.Exception(result.presentation)
+                                    else -> {
+                                        "Error! ${result.presentation ?: ""}"
+                                    }
+                                }
+                            }
+                            else -> {
+                                "Not implemented"
+                            }
+                        }
+                        send(presentation ?: "")
                     }
                 } catch (e: Exception) {
                     println(e.localizedMessage)
+                    println(e.stackTraceToString())
                 } finally {
                     println("Removing $thisConnection!")
                     connections -= thisConnection
+                    appContext.sessionService.removeSession(session)
                 }
             }
         }

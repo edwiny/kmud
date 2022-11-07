@@ -7,8 +7,10 @@ import com.example.repository.DatabaseAccessInterface
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.javatime.datetime
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.lang.Exception
 import java.time.LocalDateTime
 
 class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
@@ -46,13 +48,24 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
             id = Sessions.insertAndGetId {
                 it[accountId] = acct.id
                 it[characterId] = char.id
+                it[startTime] = LocalDateTime.now()
             }.value
         }
         return Session(
             id = id,
             account = acct,
-            character = char
+            character = char,
+            startTime = LocalDateTime.now()
         )
+    }
+
+    override fun saveNewSession(session: Session): Int {
+        if(session.account != null && session.account.id > 0 &&
+                session.character != null && session.character.id > 0) {
+            val tmp = createSession(session.account, session.character)
+            return tmp.id
+        }
+        throw Exception("Unexpected state when saving new session")
     }
 
     override fun updateSession(session: Session) {
@@ -80,12 +93,19 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
                 Session(
                     id = row[Sessions.id].value,
                     account = acct,
-                    character = char
+                    character = char,
+                    startTime = row[Sessions.startTime]
                 )
             )
             return resultList
         }
         return resultList
+    }
+
+    override fun removeSession(session: Session) {
+        transaction {
+            Sessions.deleteWhere { Sessions.id eq session.id }
+        }
     }
 
     override fun insertCharacter(char: Character): Int {
@@ -101,14 +121,16 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
 
     override fun findCharactersByAccount(acct: Account): List<Character> {
         val resultList = mutableListOf<Character>()
-        Characters.select { Characters.owner eq acct.id }.forEach {
-            resultList.add(
-                Character(
-                    id = it[Characters.id].value,
-                    name = it[Characters.name],
-                    owner = acct
+        transaction {
+            Characters.select { Characters.owner eq acct.id }.forEach {
+                resultList.add(
+                    Character(
+                        id = it[Characters.id].value,
+                        name = it[Characters.name],
+                        owner = acct
+                    )
                 )
-            )
+            }
         }
 
         return resultList
@@ -121,7 +143,7 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
 
     override fun findAccountByLogin(login: String): Account? {
 
-        var result : Account? = null
+        var result: Account? = null
 
         transaction {
             val rows = Accounts.select {
@@ -140,14 +162,18 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
         return result
     }
 
-    override fun insertAccount(acct: Account): Int {
+    override fun insertAccount(login: String, password: String, isAdmin: Boolean): Account {
         var id = 0
         transaction {
             id = Accounts.insertAndGetId {
-                it[name] = acct.name
-                it[admin] = acct.admin
+                it[name] = login
+                it[admin] = isAdmin
             }.value
         }
-        return id
+        return Account(
+            id = id,
+            name = login,
+            admin = isAdmin
+        )
     }
 }
