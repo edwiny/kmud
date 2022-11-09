@@ -75,7 +75,8 @@ fun main(args: Array<String>) {
                         val result = interpreter.process(receivedText)
                         var presentation: String = ""
                         presentation = when (result.status) {
-                            CommandResultEnum.COMPLETE -> result.presentation ?: ""
+                            CommandResultEnum.COMPLETE,
+                            CommandResultEnum.PROMPT -> result.presentation ?: ""
                             CommandResultEnum.FAIL -> {
                                 when (result.failReason) {
                                     CommandFailReasonEnum.INVALID -> "Whoops! ${result.presentation ?: ""}"
@@ -87,7 +88,7 @@ fun main(args: Array<String>) {
                                 }
                             }
                             else -> {
-                                "Not implemented"
+                                "Command Result Not implemented yet"
                             }
                         }
                         send(presentation ?: "")

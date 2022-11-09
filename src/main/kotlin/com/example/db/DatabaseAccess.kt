@@ -17,6 +17,7 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
 
     object Accounts : IntIdTable() {
         val name: Column<String> = varchar("name", 50).uniqueIndex()
+        val pwHash: Column<String> = varchar("pwhash", 50)
         val admin: Column<Boolean> = bool("admin")
     }
 
@@ -59,9 +60,8 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
         )
     }
 
-    override fun saveNewSession(session: Session): Int {
-        if(session.account != null && session.account.id > 0 &&
-                session.character != null && session.character.id > 0) {
+    override fun saveNewSessionRetire(session: Session): Int {
+        if(session.account.id > 0 && session.character.id > 0) {
             val tmp = createSession(session.account, session.character)
             return tmp.id
         }
@@ -138,7 +138,10 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
 
     override fun findAccountById(id: Int): Account {
         val row = Accounts.select { Accounts.id eq id }.first()
-        return Account(id = id, name = row[Accounts.name], admin = row[Accounts.admin])
+        return Account(id = id,
+            name = row[Accounts.name],
+            pwHash = row[Accounts.pwHash],
+            admin = row[Accounts.admin])
     }
 
     override fun findAccountByLogin(login: String): Account? {
@@ -155,6 +158,7 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
                 result = Account(
                     id = first[Accounts.id].value,
                     name = first[Accounts.name],
+                    pwHash = first[Accounts.pwHash],
                     admin = first[Accounts.admin]
                 )
             }
@@ -162,17 +166,19 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
         return result
     }
 
-    override fun insertAccount(login: String, password: String, isAdmin: Boolean): Account {
+    override fun insertAccount(login: String, pwHash: String, isAdmin: Boolean): Account {
         var id = 0
         transaction {
             id = Accounts.insertAndGetId {
                 it[name] = login
                 it[admin] = isAdmin
+                it[this.pwHash] = pwHash
             }.value
         }
         return Account(
             id = id,
             name = login,
+            pwHash = pwHash,
             admin = isAdmin
         )
     }
