@@ -31,6 +31,9 @@ repositories {
 
 dependencies {
     ktlint("com.pinterest:ktlint:$ktlintVersion")
+
+
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.2.21")
     implementation("io.ktor:ktor-server-core-jvm:$ktor_version")
     implementation("io.ktor:ktor-server-websockets-jvm:$ktor_version")
     implementation("io.ktor:ktor-server-netty-jvm:$ktor_version")

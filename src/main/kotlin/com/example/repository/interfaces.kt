@@ -14,7 +14,7 @@ interface DatabaseAccessInterface {
     fun updateSession(session: Session)
     fun searchSessions(acct: Account): List<Session>
     fun removeSession(session: Session)
-    fun insertCharacter(char: Character): Int
+    fun insertCharacter(acct: Account, char: Character): Int
     fun findCharactersByAccount(acct: Account): List<Character>
     fun findAccountById(id: Int): Account
     fun findAccountByLogin(login: String): Account?

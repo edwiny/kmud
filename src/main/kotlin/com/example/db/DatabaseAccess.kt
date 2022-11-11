@@ -108,8 +108,9 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
         }
     }
 
-    override fun insertCharacter(char: Character): Int {
+    override fun insertCharacter(acct: Account, char: Character): Int {
         var id = 0
+        char.owner = acct
         transaction {
             id = Characters.insertAndGetId {
                 it[name] = char.name

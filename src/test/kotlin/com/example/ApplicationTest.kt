@@ -1,12 +1,7 @@
 package com.example
 
-import io.ktor.server.routing.*
+import com.example.commands.RegexCommandParser
 import io.ktor.http.*
-import io.ktor.server.websocket.*
-import io.ktor.websocket.*
-import io.ktor.server.application.*
-import io.ktor.server.response.*
-import io.ktor.server.request.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlin.test.*
@@ -22,5 +17,12 @@ class ApplicationTest {
             assertEquals(HttpStatusCode.OK, status)
             assertEquals("Hello World!", bodyAsText())
         }
+    }
+
+    @Test
+    fun testCommandParser() {
+        val parser = RegexCommandParser("CMD:login {NAME:STR} with {PASSWORD:STR} [as] [SOMEONE:INT]")
+        parser.build()
+        assertNotNull(parser.parse("login edwin with edwinpass as 2"))
     }
 }

@@ -80,8 +80,8 @@ fun main(args: Array<String>) {
                             CommandResultEnum.FAIL -> {
                                 when (result.failReason) {
                                     CommandFailReasonEnum.INVALID -> "Whoops! ${result.presentation ?: ""}"
-                                    CommandFailReasonEnum.SYNTAX -> "That is not quite right, here is how the command works:! ${result.presentation ?: ""}"
-                                    CommandFailReasonEnum.INTERNAL_ERROR -> throw java.lang.Exception(result.presentation)
+                                    CommandFailReasonEnum.SYNTAX -> "That is not quite right, something is wrong with the syntax."
+                                    CommandFailReasonEnum.INTERNAL_ERROR -> throw Exception(result.presentation)
                                     else -> {
                                         "Error! ${result.presentation ?: ""}"
                                     }

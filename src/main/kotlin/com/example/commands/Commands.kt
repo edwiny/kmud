@@ -11,13 +11,15 @@ class CommandManager {
         }
     }
 
-    fun create(cmdKey: String): Command {
+    fun create(cmdKey: String, appContext: AppContext, session: Session): Command {
         if (cmdKey in commands) {
-            return commands[cmdKey]?.invoke() as Command
+            val cmd = commands[cmdKey]?.invoke() as Command
+            cmd.initialise(appContext, session, cmdKey)
+            return cmd
         }
         // invalid command
         return object : Command() {
-            override fun execute(cmd: String, args: List<String>): CommandResult {
+            override fun execute(cmd: String, args: Map<String, String>): CommandResult {
                 return failInvalid("No such command")
             }
         }
@@ -47,29 +49,39 @@ open class Command {
 
     lateinit var appCtx: AppContext
     lateinit var session: Session
+    lateinit var parser: CommandParser
+    lateinit var suppliedCommand: String
+
+    open val spec = ""
+
+
     private var prompts: MutableMap<String,(e:Command, prompt: String) -> CommandResult> =
         mutableMapOf<String,(e:Command, prompt: String) -> CommandResult>()
 
-    
 
-    fun setContext(appContext: AppContext, session: Session): Command {
+    fun initialise(appContext: AppContext, session: Session, suppliedCommand: String): Command {
         this.appCtx = appContext
         this.session = session
+        this.parser = RegexCommandParser(this.spec)
+        this.suppliedCommand = suppliedCommand
+        if(!parser.build()) throw Exception("Failed to parse command spec ${this.spec}")
         return this
     }
-    open fun match(args: List<String>): Boolean {
-        return true
+
+    fun parseAndExecute(input: String): CommandResult {
+        val args = this.parser.parse(input) ?: return failSyntax()
+        return execute(this.suppliedCommand, args)
     }
 
-    open fun execute(cmd: String, args: List<String>): CommandResult {
+    open fun execute(cmd: String, args: Map<String, String>): CommandResult {
         TODO("base class method should never be called")
     }
 
-    open fun executePrompt(cmd: String, args: List<String>): CommandResult {
-        if (cmd in prompts.keys) {
-            return prompts.getValue(cmd).invoke(this, cmd)
+    open fun executePrompt(cmdName: String): CommandResult {
+        if (cmdName in prompts.keys) {
+            return prompts.getValue(cmdName).invoke(this, cmdName)
         }
-        return failInvalid("${cmd} is not one of the choices. \n${promptChoices()}")
+        return failInvalid("${cmdName} is not one of the choices. \n${promptChoices()}")
     }
 
     fun promptChoices() : String {
@@ -77,6 +89,12 @@ open class Command {
         return "Choose:\n * $prompts"
     }
 
+    fun failSyntax(): CommandResult {
+        return CommandResult(
+            CommandResultEnum.FAIL, "Excuse me?",
+            CommandFailReasonEnum.SYNTAX
+        )
+    }
 
     fun failInvalid(msg: String): CommandResult {
         return CommandResult(
@@ -118,49 +136,46 @@ open class Command {
 }
 
 class CharGenCommand : Command() {
-    override fun match(args: List<String>): Boolean {
-        if (args.first().contentEquals("chargen")) {
-            return true
+
+    override val spec = "CMD:chargen {name:STR} [class:STR]"
+
+    override fun execute(cmd: String, args: Map<String, String>): CommandResult {
+
+        val name = args["name"]!!
+        if("class" in args) {
+            val playerClass = args["class"]
+            return success("Creating character ${name} class ${playerClass}")
+        } else {
+
+            addPrompt("wizard") { c, p ->
+                println("Doing wizard")
+                c.success("You're a wizard, ${name}!")
+            }
+            addPrompt("fighter") { c, p ->
+                println("doing fighter")
+                c.success("Rarr! you're a fighter!")
+            }
+            return (successWithPrompts("What sort of character do you want?"))
         }
-        return false
-    }
-
-    override fun execute(cmd: String, args: List<String>): CommandResult {
-
-        val p1 = fun(c: Command, p: String) : CommandResult {
-            println("Doing wizard")
-            return c.success("You're a wizard, Harry!")
-        }
-
-        addPrompt("wizard", p1)
-        addPrompt("fighter") { c, p ->
-            println("doing fighter")
-            c.success("Rarr! you're a fighter!")
-        }
-
-        return(successWithPrompts("What sort of character do you want?"))
     }
 }
 
 
 class LoginCommand : Command() {
-    override fun match(args: List<String>): Boolean {
-        if (args.first().contentEquals("login")) {
-            return true
-        }
-        return false
-    }
 
-    override fun execute(cmd: String, args: List<String>): CommandResult {
+    override val spec = "CMD:login {login:STR} [password:STR]"
 
-        val account = appCtx.accountService.loadAccount(args[0])
+
+    override fun execute(cmd: String, args: Map<String, String>): CommandResult {
+
+        val account = appCtx.accountService.loadAccount(args["login"]!!)
             ?: return failInvalid(
                 "Looks like you're new here!\n" +
                     "First create a new login like this: register <name> <password>.\n\n" +
                     "For example: \n\tregister fred freds_password"
             )
 
-        if (!appCtx.sessionService.loginAccount(session, account.name, args[1])) {
+        if (!appCtx.sessionService.loginAccount(session, account.name, args["password"]!!)) {
             return failInvalid("Password incorrect, try again!")
         }
         var resultStr = "Welcome back, ${account.name}.\n"
@@ -168,7 +183,7 @@ class LoginCommand : Command() {
 
         val chars = appCtx.sessionService.characters(account)
         if (chars.isNotEmpty()) {
-            if (args.indexOf("with") <= 0) {
+            if (!args.containsKey("character")) {
                 val names = chars.joinToString("\n * ") { it.name }
                 resultStr = resultStr.plus("Which character do you want to log in with?\n * " +
                         names +
@@ -200,7 +215,6 @@ class Interpreter(private val appContext: AppContext, private val session: Sessi
     val mgr = CommandManager()
     var promptCmd: Command? = null
 
-    var cmdInvoked = ""
     var args: List<String> = emptyList()
 
     init {
@@ -208,31 +222,33 @@ class Interpreter(private val appContext: AppContext, private val session: Sessi
         mgr.add(listOf("chargen"), ::CharGenCommand)
     }
 
-    fun parse(input: String): Command? {
 
-        var parts = input.split(" ").toMutableList()
-        cmdInvoked = parts.removeAt(0)
-        args = parts.toList()
-        if (promptCmd != null) return promptCmd
-
-        return mgr.create(cmdInvoked).setContext(appContext, session)
+    fun commandNameFrom(input: String): String {
+        val parts = input.split(" ").toMutableList()
+        return(parts.removeAt(0))
     }
 
     fun process(input: String): CommandResult {
         try {
-            val cmd = parse(input) ?: return CommandResult(
-                CommandResultEnum.FAIL, "Huh?",
-                CommandFailReasonEnum.INVALID
-            )
+            val cmdName = commandNameFrom(input)
+            if (cmdName.isBlank()) {
+                return CommandResult(
+                    CommandResultEnum.FAIL, "Huh?",
+                    CommandFailReasonEnum.INVALID
+                )
+            }
 
             var result: CommandResult? = null
+            val cmd: Command
 
-            if (promptCmd != null && cmd == promptCmd) {
-                println("Rerouting to propmt command")
-                result = cmd.executePrompt(cmdInvoked, args)
+            if (this.promptCmd != null) {
+                println("Rerouting to prompt command")
+                cmd = this.promptCmd!!
+                result = cmd.executePrompt(cmdName)
 
             } else {
-                result = cmd.execute(cmdInvoked, args)
+                cmd = mgr.create(cmdName, appContext, session)
+                result = cmd.parseAndExecute(input)
             }
 
             when (result.status) {
