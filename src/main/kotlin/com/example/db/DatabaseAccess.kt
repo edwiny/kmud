@@ -61,7 +61,7 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
     }
 
     override fun saveNewSessionRetire(session: Session): Int {
-        if(session.account.id > 0 && session.character.id > 0) {
+        if (session.account.id > 0 && session.character.id > 0) {
             val tmp = createSession(session.account, session.character)
             return tmp.id
         }
@@ -139,10 +139,12 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
 
     override fun findAccountById(id: Int): Account {
         val row = Accounts.select { Accounts.id eq id }.first()
-        return Account(id = id,
+        return Account(
+            id = id,
             name = row[Accounts.name],
             pwHash = row[Accounts.pwHash],
-            admin = row[Accounts.admin])
+            admin = row[Accounts.admin]
+        )
     }
 
     override fun findAccountByLogin(login: String): Account? {

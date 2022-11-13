@@ -10,7 +10,7 @@ interface DatabaseInterface {
 
 interface DatabaseAccessInterface {
     fun createSession(acct: Account, char: Character): Session
-    fun saveNewSessionRetire(session: Session) : Int
+    fun saveNewSessionRetire(session: Session): Int
     fun updateSession(session: Session)
     fun searchSessions(acct: Account): List<Session>
     fun removeSession(session: Session)

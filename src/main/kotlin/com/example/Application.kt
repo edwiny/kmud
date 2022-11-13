@@ -7,7 +7,6 @@ import com.example.config.AppContextFactory
 import com.example.config.AppProfilesEnum
 import com.example.config.ConfigurationFactory
 import com.example.config.EnvironmentEnum
-import com.example.model.Session
 import io.ktor.server.application.*
 
 import io.ktor.server.engine.*
