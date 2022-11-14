@@ -25,7 +25,8 @@ class CommandManager {
 enum class CommandResultEnum {
     FAIL,
     PROMPT,
-    COMPLETE
+    COMPLETE,
+    CHAIN
 }
 
 enum class CommandFailReasonEnum {
@@ -40,6 +41,7 @@ class CommandResult(
     val status: CommandResultEnum,
     val presentation: String? = null,
     val failReason: CommandFailReasonEnum? = null,
+    val chainCommand: String? = null,
     val meta: Map<String, String>? = null
 )
 
@@ -54,6 +56,8 @@ class Interpreter(private val appContext: AppContext, private val session: Sessi
         mgr.add(listOf("login"), ::LoginCommand)
         mgr.add(listOf("chargen"), ::CharGenCommand)
         mgr.add(listOf("charlist"), ::CharListCommand)
+        mgr.add(listOf("chardelete"), ::CharDeleteCommand)
+        mgr.add(listOf("register"), ::AccountCreateCommand)
     }
 
     fun commandNameFrom(input: String): String {
@@ -93,7 +97,6 @@ class Interpreter(private val appContext: AppContext, private val session: Sessi
                     println("Resetting prompt")
                     this.promptCmd = null
                 }
-
                 else -> {}
             }
             return result

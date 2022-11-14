@@ -19,17 +19,19 @@ class LoginCommand : Command() {
         if (!appCtx.sessionService.loginAccount(session, account.name, args["password"]!!)) {
             return failInvalid("Password incorrect, try again!")
         }
-        var resultStr = "Welcome back, ${account.name}.\n"
+        var resultStr = ""
+
 
         val chars = appCtx.sessionService.characters(account)
         if (chars.isNotEmpty()) {
+            resultStr = "Welcome back, ${account.name}.\n"
             if (!args.containsKey("character")) {
-                val names = chars.joinToString("\n * ") { it.name }
-                resultStr = resultStr.plus(
-                    "Which character do you want to log in with?\n * " +
-                        names +
-                        "\n\nChoose like this: login ${account.name} your_password with ${chars.first().name}"
-                )
+                chars.forEach {
+                    addPrompt(it.name) {
+                        c, p -> successWithChain("Switching to $c", "puppet $c")
+                    }
+                }
+                return successWithPrompts("Welcome back, ${account.name}. Which character do you want to play with?")
             } else {
                 resultStr = resultStr.plus("with argument not implemented yet")
             }

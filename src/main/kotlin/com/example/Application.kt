@@ -1,6 +1,7 @@
 package com.example
 
 import com.example.commands.CommandFailReasonEnum
+import com.example.commands.CommandResult
 import com.example.commands.CommandResultEnum
 import com.example.commands.Interpreter
 import com.example.config.AppContextFactory
@@ -72,25 +73,13 @@ fun main(args: Array<String>) {
 
                          */
                         val result = interpreter.process(receivedText)
-                        var presentation: String = ""
-                        presentation = when (result.status) {
-                            CommandResultEnum.COMPLETE,
-                            CommandResultEnum.PROMPT -> result.presentation ?: ""
-                            CommandResultEnum.FAIL -> {
-                                when (result.failReason) {
-                                    CommandFailReasonEnum.INVALID -> "Whoops! ${result.presentation ?: ""}"
-                                    CommandFailReasonEnum.SYNTAX -> "That is not quite right, something is wrong with the syntax."
-                                    CommandFailReasonEnum.INTERNAL_ERROR -> throw Exception(result.presentation)
-                                    else -> {
-                                        "Error! ${result.presentation ?: ""}"
-                                    }
-                                }
-                            }
-                            else -> {
-                                "Command Result Not implemented yet"
-                            }
+                        handleResponse(result)
+                        if (result.status == CommandResultEnum.CHAIN && result.chainCommand != null) {
+                            println("Doing chain command: ${result.chainCommand}")
+                            val result2 = interpreter.process(result.chainCommand)
+                            handleResponse(result2)
                         }
-                        send(presentation ?: "")
+
                     }
                 } catch (e: Exception) {
                     println(e.localizedMessage)
@@ -103,6 +92,29 @@ fun main(args: Array<String>) {
             }
         }
     }.start(wait = true)
+}
+
+private suspend fun DefaultWebSocketServerSession.handleResponse(result: CommandResult) {
+    var presentation: String = ""
+    presentation = when (result.status) {
+        CommandResultEnum.COMPLETE,
+        CommandResultEnum.CHAIN,
+        CommandResultEnum.PROMPT -> result.presentation ?: ""
+        CommandResultEnum.FAIL -> {
+            when (result.failReason) {
+                CommandFailReasonEnum.INVALID -> "Whoops! ${result.presentation ?: ""}"
+                CommandFailReasonEnum.SYNTAX -> "That is not quite right, something is wrong with the syntax."
+                CommandFailReasonEnum.INTERNAL_ERROR -> throw Exception(result.presentation)
+                else -> {
+                    "Error! ${result.presentation ?: ""}"
+                }
+            }
+        }
+        else -> {
+            "Command Result Not implemented yet"
+        }
+    }
+    send(presentation ?: "")
 }
 
 /*

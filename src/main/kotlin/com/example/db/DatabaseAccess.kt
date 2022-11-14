@@ -120,6 +120,19 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
         return id
     }
 
+    override fun deleteCharacter(char: Character): Boolean {
+        var numDeleted = 0
+        transaction {
+            numDeleted = Characters.deleteWhere {
+                Characters.id eq char.id
+            }
+        }
+        if (numDeleted > 0) {
+            return true
+        }
+        return false
+    }
+
     override fun findCharactersByAccount(acct: Account): List<Character> {
         val resultList = mutableListOf<Character>()
         transaction {
@@ -135,6 +148,39 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
         }
 
         return resultList
+    }
+
+    fun hydrateAccountFromDb(row: ResultRow) : Account {
+
+        return Account(
+            id = row[Accounts.id].value,
+            name = row[Accounts.name],
+            admin = row[Accounts.admin],
+            pwHash = row[Accounts.pwHash]
+        )
+    }
+
+    fun hydrateCharacterFromDb(row: ResultRow) : Character {
+        return Character(
+            id = row[Characters.id].value,
+            name = row[Characters.name],
+            owner = hydrateAccountFromDb(row)
+        )
+    }
+
+    override fun findCharacterByName(charName: String): Character? {
+        var result : Character? = null
+        transaction {
+
+            val row = Characters.join(Accounts, JoinType.INNER, additionalConstraint = { Characters.owner eq Accounts.id }).
+                    select { Characters.name eq charName }.firstOrNull()
+
+
+            if(row != null) {
+                result = hydrateCharacterFromDb(row)
+            }
+        }
+        return result
     }
 
     override fun findAccountById(id: Int): Account {

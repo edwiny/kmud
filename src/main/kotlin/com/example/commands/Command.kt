@@ -72,6 +72,14 @@ open class Command {
         )
     }
 
+    fun failInternalError(msg: String): CommandResult {
+        return CommandResult(
+            CommandResultEnum.FAIL, msg,
+            CommandFailReasonEnum.INTERNAL_ERROR
+        )
+    }
+
+
     fun success(msg: String): CommandResult {
         return CommandResult(
             CommandResultEnum.COMPLETE, msg
@@ -91,6 +99,12 @@ open class Command {
 
     fun addPrompt(prompt: String, handler: (e: Command, prompt: String) -> CommandResult) {
         this.prompts.set(prompt, handler)
+    }
+
+    fun successWithChain(msg: String, command: String): CommandResult {
+        return CommandResult(
+            CommandResultEnum.CHAIN, msg, null, chainCommand = command
+        )
     }
 
     open fun matchPrompt(args: List<String>): Boolean {

@@ -1,6 +1,7 @@
 package com.example.service
 
 import com.example.model.Account
+import com.example.model.Session
 import com.example.repository.DatabaseAccessInterface
 
 interface AccountService {
