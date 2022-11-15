@@ -26,7 +26,8 @@ enum class CommandResultEnum {
     FAIL,
     PROMPT,
     COMPLETE,
-    CHAIN
+    CHAIN,
+    EXIT
 }
 
 enum class CommandFailReasonEnum {
@@ -50,6 +51,7 @@ class Interpreter(private val appContext: AppContext, private val session: Sessi
     val mgr = CommandManager()
     var promptCmd: Command? = null
 
+
     var args: List<String> = emptyList()
 
     init {
@@ -58,6 +60,12 @@ class Interpreter(private val appContext: AppContext, private val session: Sessi
         mgr.add(listOf("charlist"), ::CharListCommand)
         mgr.add(listOf("chardelete"), ::CharDeleteCommand)
         mgr.add(listOf("register"), ::AccountCreateCommand)
+        mgr.add(listOf("puppet"), ::CharPuppetCommand)
+        mgr.add(listOf("logout", "quit"), ::LogoutCommand)
+    }
+
+    fun resetPrompt() {
+        this.promptCmd = null
     }
 
     fun commandNameFrom(input: String): String {
@@ -81,6 +89,7 @@ class Interpreter(private val appContext: AppContext, private val session: Sessi
             if (this.promptCmd != null) {
                 println("Rerouting to prompt command")
                 cmd = this.promptCmd!!
+                resetPrompt()
                 result = cmd.executePrompt(cmdName)
             } else {
                 cmd = mgr.create(cmdName, appContext, session) ?: return CommandResult(
@@ -94,8 +103,7 @@ class Interpreter(private val appContext: AppContext, private val session: Sessi
                     this.promptCmd = cmd
                 }
                 CommandResultEnum.COMPLETE -> {
-                    println("Resetting prompt")
-                    this.promptCmd = null
+
                 }
                 else -> {}
             }

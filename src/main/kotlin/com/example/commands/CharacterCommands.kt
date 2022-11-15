@@ -93,7 +93,7 @@ class CharPuppetCommand : Command() {
         val char = characters.filter { it.name == name }.firstOrNull()
         return if (char != null) {
             appCtx.sessionService.puppetCharacter(session, char)
-            success("You are playing with $name")
+            success("You are now $name.")
         } else {
             failInvalid("No such character $name!")
         }

@@ -61,6 +61,7 @@ fun main(args: Array<String>) {
 
                 try {
                     send("You are connected! There are ${connections.count()} users here.")
+
                     for (frame in incoming) {
                         frame as? Frame.Text ?: continue
                         val receivedText = frame.readText()
@@ -76,10 +77,12 @@ fun main(args: Array<String>) {
                         handleResponse(result)
                         if (result.status == CommandResultEnum.CHAIN && result.chainCommand != null) {
                             println("Doing chain command: ${result.chainCommand}")
+
+
                             val result2 = interpreter.process(result.chainCommand)
                             handleResponse(result2)
                         }
-
+                        if (result.status == CommandResultEnum.EXIT) break
                     }
                 } catch (e: Exception) {
                     println(e.localizedMessage)
@@ -99,6 +102,8 @@ private suspend fun DefaultWebSocketServerSession.handleResponse(result: Command
     presentation = when (result.status) {
         CommandResultEnum.COMPLETE,
         CommandResultEnum.CHAIN,
+        CommandResultEnum.EXIT
+            ,
         CommandResultEnum.PROMPT -> result.presentation ?: ""
         CommandResultEnum.FAIL -> {
             when (result.failReason) {

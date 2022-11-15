@@ -28,7 +28,7 @@ class LoginCommand : Command() {
             if (!args.containsKey("character")) {
                 chars.forEach {
                     addPrompt(it.name) {
-                        c, p -> successWithChain("Switching to $c", "puppet $c")
+                        c, p -> successWithChain("Switching to $p", "puppet $p")
                     }
                 }
                 return successWithPrompts("Welcome back, ${account.name}. Which character do you want to play with?")
@@ -49,4 +49,23 @@ class LoginCommand : Command() {
         }
         */
     }
+}
+
+class LogoutCommand : Command() {
+
+    override val key = "logout"
+    override val description = "Save and logout."
+    override val spec = "CMD:$key"
+
+    fun createAndPuppet(name: String, playerClass: String) : CommandResult {
+        val character = appCtx.sessionService.createCharacter(session, name, playerClass)
+        appCtx.sessionService.puppetCharacter(session, character)
+        return success("You are $name the ${playerClass}.")
+    }
+
+    override fun execute(cmd: String, args: Map<String, String>): CommandResult {
+        appCtx.sessionService.logout(session)
+        return CommandResult(status = CommandResultEnum.EXIT, "Bye!")
+    }
+
 }

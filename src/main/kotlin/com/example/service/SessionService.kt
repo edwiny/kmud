@@ -17,6 +17,7 @@ interface SessionService {
     fun puppetCharacter(session: Session, char: Character): Boolean
     fun createCharacter(session: Session, charName: String, playerClass: String): Character
     fun deleteCharacter(session: Session, char: Character): Boolean
+    fun logout(session: Session)
 }
 
 class SessionServiceImpl(val dao: DatabaseAccessInterface) : SessionService {
@@ -95,5 +96,9 @@ class SessionServiceImpl(val dao: DatabaseAccessInterface) : SessionService {
 
         //implement validation that char is not in use
         return dao.deleteCharacter(char)
+    }
+
+    override fun logout(session: Session) {
+        dao.updateSession(session)
     }
 }
