@@ -32,7 +32,7 @@ fun runKtorServer(port: Int, uri: String, appContext: AppContext) {
             webSocket(uri) {
                 println("Adding user!")
                 val thisConnection = KtorConnection(this)
-                val session = appContext.sessionService.emptySession()
+                val session = appContext.sessionService.emptySessionKtor()
                 connections += thisConnection
                 val interpreter = Interpreter(appContext, session)
 
@@ -67,7 +67,7 @@ fun runKtorServer(port: Int, uri: String, appContext: AppContext) {
                 } finally {
                     println("Removing $thisConnection!")
                     connections -= thisConnection
-                    appContext.sessionService.removeSession(session)
+                    appContext.sessionService.removeSessionKtor(session)
                 }
             }
         }

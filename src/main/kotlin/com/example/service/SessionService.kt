@@ -1,5 +1,7 @@
 package com.example.service
 
+import com.example.commands.Interpreter
+import com.example.config.AppContext
 import com.example.model.Account
 import com.example.model.Character
 import com.example.model.Session
@@ -9,11 +11,13 @@ import java.time.LocalDateTime
 
 interface SessionService {
     fun characters(acct: Account): List<Character>
-    fun emptySession(): Session
-    fun emptySessionNetty(channel: SocketChannel): Session
-    fun findSession(channel: SocketChannel): Session?
+    @Deprecated("ktor")
+    fun emptySessionKtor(): Session
+    fun emptySessionNetty(): Session
     fun createSessionOld(acct: Account, charName: String): Session
-    fun removeSession(session: Session)
+    fun removeSessionNetty(session: Session)
+    @Deprecated("ktor")
+    fun removeSessionKtor(session: Session)
     fun numSessions(): Int
     fun loginAccount(session: Session, login: String, password: String): Boolean
     fun puppetCharacter(session: Session, char: Character): Boolean
@@ -24,8 +28,8 @@ interface SessionService {
 
 class SessionServiceImpl(val dao: DatabaseAccessInterface) : SessionService {
     var sessionsOld = mutableListOf<Session>()
-    val connections = mutableMapOf<SocketChannel, Session>()
-    val sessions = mutableMapOf<Session, SocketChannel>()
+    //val connections = mutableMapOf<SocketChannel, Session>()
+    //val sessions = mutableMapOf<Session, SocketChannel>()
 
     private val anonAccount = Account(0, "anon", "", false)
     private val anonChar = Character(0, "noface", anonAccount)
@@ -35,31 +39,21 @@ class SessionServiceImpl(val dao: DatabaseAccessInterface) : SessionService {
     }
 
     //side-effect
-    override fun emptySession(): Session {
+    override fun emptySessionKtor(): Session {
         val session = Session(
             id = 0, account = anonAccount, character = anonChar,
-            startTime = LocalDateTime.now()
+            startTime = LocalDateTime.now(),
         )
         sessionsOld.add(session)
         return session
     }
 
-    override fun emptySessionNetty(channel: SocketChannel) : Session {
+    override fun emptySessionNetty() : Session {
         val session = Session(
             id = 0, account = anonAccount, character = anonChar,
             startTime = LocalDateTime.now()
         )
-        sessionsOld.add(session)
-        sessions[session] = channel
-        connections[channel] = session
         return session
-    }
-
-    override fun findSession(channel: SocketChannel): Session? {
-        if(channel in connections) {
-            return connections[channel]!!
-        }
-        return null
     }
 
     override fun loginAccount(session: Session, login: String, password: String): Boolean {
@@ -83,14 +77,18 @@ class SessionServiceImpl(val dao: DatabaseAccessInterface) : SessionService {
         return dao.createSession(acct, character,)
     }
 
-    override fun removeSession(session: Session) {
-        println("Removing session for ${session.account.name}.")
+    override fun removeSessionKtor(session: Session) {
+        println("[Ktor] Removing session for ${session.account.name}.")
         dao.removeSession(session)
         sessionsOld.remove(session)
     }
 
+    override fun removeSessionNetty(session: Session) {
+        dao.removeSession(session)
+    }
+
     override fun numSessions(): Int {
-        return sessionsOld.count()
+        return 1
     }
 
     override fun puppetCharacter(session: Session, char: Character): Boolean {

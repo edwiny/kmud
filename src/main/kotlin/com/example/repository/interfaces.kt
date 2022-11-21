@@ -7,6 +7,7 @@ import com.example.model.Account
 import com.example.model.Character
 import com.example.model.Session
 import io.netty.channel.socket.SocketChannel
+import kotlin.coroutines.coroutineContext
 
 interface DatabaseInterface {
     fun connect(url: String)
@@ -33,6 +34,17 @@ interface NetworkServerInterface {
     fun closeConnectionHandler(handler: (channel: SocketChannel) -> Boolean)
     fun incomingDataHandler(handler: (channel: SocketChannel, message: String) -> String)
     fun intervalHandler(handler: () -> Boolean)
+}
+
+enum class MessageType {
+    TEXT,
+}
+
+
+class Message(val text: String, val type: MessageType) {
+    override fun toString(): String {
+        return text
+    }
 }
 
 

@@ -92,7 +92,7 @@ class NettyWebsocketServer(val SSL: Boolean = false,
             val future = ch.closeFuture()
             ch.eventLoop().scheduleAtFixedRate( {
                 val currentTime = System.currentTimeMillis() / 100
-                connMgr.broadcastSomething("schedule $currentTime")
+                //connMgr.broadcastSomething("schedule $currentTime")
                 this.intervalHandler()
                 //println("timer event")
             }, 0, 1000, TimeUnit.MILLISECONDS, )
@@ -171,7 +171,6 @@ class WebSocketFrameHandler(val incomingDataHandler: (channel: SocketChannel, me
     override fun channelRead0(ctx: ChannelHandlerContext, frame: WebSocketFrame) {
         // ping and pong frames already handled
         if (frame is TextWebSocketFrame) {
-            // Send the uppercase string back.
             val request = frame.text()
             val result = incomingDataHandler(ctx.channel() as SocketChannel, request)
             if (result != "") ctx.channel().writeAndFlush(TextWebSocketFrame(result))

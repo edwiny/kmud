@@ -11,26 +11,9 @@ import com.example.network.sendNetworkKtor
 
 import io.ktor.server.websocket.*
 import io.netty.channel.socket.SocketChannel
+import io.netty.util.AttributeKey
 
 fun main(args: Array<String>) {
-
-    // Database.connect("jdbc:sqlite:kmud.sqlite")
-
-    // val acct_repo = DatabaseAccess()
-
-    // val id = acct_repo.insert(Account(0, "ron", true))
-    // println("Created account with id $id")
-
-    /*
-    transaction {
-        val needle = acct_repo.findAccountByLogin("edwin")
-        println("result of search: ${needle?.id} ${needle?.name} ${needle?.admin}")
-    }
-
-     */
-
-    // old method
-    // io.ktor.server.netty.EngineMain.main(args)
 
     val appContext = AppContextFactory.getAppContext(AppProfilesEnum.RUNTIME, ConfigurationFactory.getConfigForEnvironment(EnvironmentEnum.DEV))
 
@@ -49,12 +32,14 @@ fun main(args: Array<String>) {
 
 fun newConnectionHandler(appContext: AppContext, channel: SocketChannel): Boolean {
     println("newConnectionHandler() called")
-    appContext.sessionService.emptySessionNetty(channel)
+
+    appContext.sessionCtxManager.newSessionCtxFromChannel(appContext, channel)
     return true
 }
 
 fun closeConnectionHandler(appContext: AppContext, channel: SocketChannel): Boolean {
     println("closeConnectionHandler() called")
+    appContext.sessionCtxManager.deleteSessionCtxByChannel(channel)
     return true
 }
 
@@ -62,22 +47,20 @@ fun incomingDataHandler(appContext: AppContext, channel: SocketChannel, message:
 
     println("incomingDataHandler() called")
 
-    val session = appContext.sessionService.findSession(channel)!!
-    val interpreter = Interpreter(appContext, session)
-    val result = interpreter.process(message)
-    handleResponse(result)
+    val sessionCtx = appContext.sessionCtxManager.findSessionCtxByChannel(channel)
+    val result = sessionCtx!!.interpreter.process(message)
+    var response = handleResponse(result)
     if (result.status == CommandResultEnum.CHAIN && result.chainCommand != null) {
         println("Doing chain command: ${result.chainCommand}")
-
-
-        val result2 = interpreter.process(result.chainCommand)
-        handleResponse(result2)
+        val result2 = sessionCtx.interpreter.process(result.chainCommand)
+        response = handleResponse(result2)
+        //TODO use recursion with safeguard
     }
     if (result.status == CommandResultEnum.EXIT) {
         TODO("implement exit functionality")
     }
 
-    return handleResponse(result)
+    return response
 }
 
 
@@ -85,10 +68,6 @@ fun intervalHandler(appContext: AppContext) : Boolean {
     println("intervalHandler() called")
     return true
 }
-
-
-
-
 
 
 
