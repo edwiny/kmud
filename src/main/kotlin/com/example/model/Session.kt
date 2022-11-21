@@ -8,5 +8,4 @@ class Session(
     var account: Account,
     var character: Character,
     val startTime: LocalDateTime,
-    val socket: DefaultWebSocketSession? = null
 )

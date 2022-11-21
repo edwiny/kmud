@@ -4,20 +4,13 @@ import com.example.commands.CommandFailReasonEnum
 import com.example.commands.CommandResult
 import com.example.commands.CommandResultEnum
 import com.example.commands.Interpreter
-import com.example.config.AppContextFactory
-import com.example.config.AppProfilesEnum
-import com.example.config.ConfigurationFactory
-import com.example.config.EnvironmentEnum
-import io.ktor.server.application.*
+import com.example.config.*
+import com.example.network.NettyWebsocketServer
+import com.example.network.runKtorServer
+import com.example.network.sendNetworkKtor
 
-import io.ktor.server.engine.*
-import io.ktor.server.netty.Netty
-import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
-import io.ktor.websocket.*
-import java.time.Duration
-import java.util.*
-import kotlin.collections.LinkedHashSet
+import io.netty.channel.socket.SocketChannel
 
 fun main(args: Array<String>) {
 
@@ -41,69 +34,76 @@ fun main(args: Array<String>) {
 
     val appContext = AppContextFactory.getAppContext(AppProfilesEnum.RUNTIME, ConfigurationFactory.getConfigForEnvironment(EnvironmentEnum.DEV))
 
-    embeddedServer(Netty, 8080) {
-        install(WebSockets) {
-            pingPeriod = Duration.ofSeconds(15)
-            timeout = Duration.ofSeconds(15)
-            maxFrameSize = Long.MAX_VALUE
-            masking = false
-        }
+    val port = 8080
+    val uri = "/chat"
 
-        routing {
-            val connections = Collections.synchronizedSet<Connection?>(LinkedHashSet())
-
-            webSocket("/chat") {
-                println("Adding user!")
-                val thisConnection = Connection(this)
-                val session = appContext.sessionService.emptySessionFromSocket(this)
-                connections += thisConnection
-                val interpreter = Interpreter(appContext, session)
-
-                try {
-                    send("You are connected! There are ${connections.count()} users here.")
-
-                    for (frame in incoming) {
-                        frame as? Frame.Text ?: continue
-                        val receivedText = frame.readText()
-                        println("message received! $receivedText")
-                        /*
-                        val textWithUsername = "[${thisConnection.name}]: $receivedText"
-                        connections.forEach {
-                            it.session.send(textWithUsername)
-                        }
-
-                         */
-                        val result = interpreter.process(receivedText)
-                        handleResponse(result)
-                        if (result.status == CommandResultEnum.CHAIN && result.chainCommand != null) {
-                            println("Doing chain command: ${result.chainCommand}")
-
-
-                            val result2 = interpreter.process(result.chainCommand)
-                            handleResponse(result2)
-                        }
-                        if (result.status == CommandResultEnum.EXIT) break
-                    }
-                } catch (e: Exception) {
-                    println(e.localizedMessage)
-                    println(e.stackTraceToString())
-                } finally {
-                    println("Removing $thisConnection!")
-                    connections -= thisConnection
-                    appContext.sessionService.removeSession(session)
-                }
-            }
-        }
-    }.start(wait = true)
+    //runKtorServer(port, uri, appContext)
+    val server = NettyWebsocketServer()
+    server.newConnectionHandler { ch -> newConnectionHandler(appContext, ch) }
+    server.closeConnectionHandler { ch -> closeConnectionHandler(appContext, ch) }
+    server.incomingDataHandler { channel, message -> incomingDataHandler(appContext, channel, message) }
+    server.intervalHandler { intervalHandler(appContext) }
+    server.run(args)
 }
 
-private suspend fun DefaultWebSocketServerSession.handleResponse(result: CommandResult) {
+
+fun newConnectionHandler(appContext: AppContext, channel: SocketChannel): Boolean {
+    println("newConnectionHandler() called")
+    appContext.sessionService.emptySessionNetty(channel)
+    return true
+}
+
+fun closeConnectionHandler(appContext: AppContext, channel: SocketChannel): Boolean {
+    println("closeConnectionHandler() called")
+    return true
+}
+
+fun incomingDataHandler(appContext: AppContext, channel: SocketChannel, message: String) : String {
+
+    println("incomingDataHandler() called")
+
+    val session = appContext.sessionService.findSession(channel)!!
+    val interpreter = Interpreter(appContext, session)
+    val result = interpreter.process(message)
+    handleResponse(result)
+    if (result.status == CommandResultEnum.CHAIN && result.chainCommand != null) {
+        println("Doing chain command: ${result.chainCommand}")
+
+
+        val result2 = interpreter.process(result.chainCommand)
+        handleResponse(result2)
+    }
+    if (result.status == CommandResultEnum.EXIT) {
+        TODO("implement exit functionality")
+    }
+
+    return handleResponse(result)
+}
+
+
+fun intervalHandler(appContext: AppContext) : Boolean {
+    println("intervalHandler() called")
+    return true
+}
+
+
+
+
+
+
+
+
+
+
+
+
+//suspend fun DefaultWebSocketServerSession.handleResponse(result: CommandResult) {
+fun handleResponse(result: CommandResult): String {
     var presentation: String = ""
     presentation = when (result.status) {
         CommandResultEnum.COMPLETE,
         CommandResultEnum.CHAIN,
-        CommandResultEnum.EXIT
-            ,
+        CommandResultEnum.EXIT,
         CommandResultEnum.PROMPT -> result.presentation ?: ""
         CommandResultEnum.FAIL -> {
             when (result.failReason) {
@@ -119,15 +119,7 @@ private suspend fun DefaultWebSocketServerSession.handleResponse(result: Command
             "Command Result Not implemented yet"
         }
     }
-    send(presentation ?: "")
+    return presentation
+    //sendNetworkKtor(presentation)
 }
 
-/*
-@Suppress("unused") // application.conf references the main function. This annotation prevents the IDE from marking it as unused.
-fun Application.module() {
-
-    configureSockets()
-    configureRouting()
-}
-
- */

@@ -4,12 +4,14 @@ import com.example.model.Account
 import com.example.model.Character
 import com.example.model.Session
 import com.example.repository.DatabaseAccessInterface
-import io.ktor.websocket.*
+import io.netty.channel.socket.SocketChannel
 import java.time.LocalDateTime
 
 interface SessionService {
     fun characters(acct: Account): List<Character>
-    fun emptySessionFromSocket(socket: DefaultWebSocketSession): Session
+    fun emptySession(): Session
+    fun emptySessionNetty(channel: SocketChannel): Session
+    fun findSession(channel: SocketChannel): Session?
     fun createSessionOld(acct: Account, charName: String): Session
     fun removeSession(session: Session)
     fun numSessions(): Int
@@ -21,7 +23,9 @@ interface SessionService {
 }
 
 class SessionServiceImpl(val dao: DatabaseAccessInterface) : SessionService {
-    var sessions = mutableListOf<Session>()
+    var sessionsOld = mutableListOf<Session>()
+    val connections = mutableMapOf<SocketChannel, Session>()
+    val sessions = mutableMapOf<Session, SocketChannel>()
 
     private val anonAccount = Account(0, "anon", "", false)
     private val anonChar = Character(0, "noface", anonAccount)
@@ -30,13 +34,32 @@ class SessionServiceImpl(val dao: DatabaseAccessInterface) : SessionService {
         return dao.findCharactersByAccount(acct)
     }
 
-    override fun emptySessionFromSocket(socket: DefaultWebSocketSession): Session {
+    //side-effect
+    override fun emptySession(): Session {
         val session = Session(
             id = 0, account = anonAccount, character = anonChar,
-            startTime = LocalDateTime.now(), socket = socket
+            startTime = LocalDateTime.now()
         )
-        sessions.add(session)
+        sessionsOld.add(session)
         return session
+    }
+
+    override fun emptySessionNetty(channel: SocketChannel) : Session {
+        val session = Session(
+            id = 0, account = anonAccount, character = anonChar,
+            startTime = LocalDateTime.now()
+        )
+        sessionsOld.add(session)
+        sessions[session] = channel
+        connections[channel] = session
+        return session
+    }
+
+    override fun findSession(channel: SocketChannel): Session? {
+        if(channel in connections) {
+            return connections[channel]!!
+        }
+        return null
     }
 
     override fun loginAccount(session: Session, login: String, password: String): Boolean {
@@ -63,11 +86,11 @@ class SessionServiceImpl(val dao: DatabaseAccessInterface) : SessionService {
     override fun removeSession(session: Session) {
         println("Removing session for ${session.account.name}.")
         dao.removeSession(session)
-        sessions.remove(session)
+        sessionsOld.remove(session)
     }
 
     override fun numSessions(): Int {
-        return sessions.count()
+        return sessionsOld.count()
     }
 
     override fun puppetCharacter(session: Session, char: Character): Boolean {

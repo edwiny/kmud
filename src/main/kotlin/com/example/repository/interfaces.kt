@@ -1,8 +1,12 @@
 package com.example.repository
 
+import com.example.commands.Command
+import com.example.commands.CommandResult
+import com.example.config.AppContext
 import com.example.model.Account
 import com.example.model.Character
 import com.example.model.Session
+import io.netty.channel.socket.SocketChannel
 
 interface DatabaseInterface {
     fun connect(url: String)
@@ -22,3 +26,13 @@ interface DatabaseAccessInterface {
     fun findAccountByLogin(login: String): Account?
     fun insertAccount(login: String, password: String, isAdmin: Boolean): Account
 }
+
+
+interface NetworkServerInterface {
+    fun newConnectionHandler(handler: (channel: SocketChannel) -> Boolean)
+    fun closeConnectionHandler(handler: (channel: SocketChannel) -> Boolean)
+    fun incomingDataHandler(handler: (channel: SocketChannel, message: String) -> String)
+    fun intervalHandler(handler: () -> Boolean)
+}
+
+

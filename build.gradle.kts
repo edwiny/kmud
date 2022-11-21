@@ -44,6 +44,9 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposed_version")
     implementation("org.xerial:sqlite-jdbc:3.39.3.0")
     implementation("org.jetbrains.exposed:exposed-java-time:$exposed_version")
+
+    implementation("io.netty:netty-all:4.1.85.Final")
+
 }
 
 ktlint {
