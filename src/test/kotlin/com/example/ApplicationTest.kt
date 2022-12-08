@@ -20,8 +20,9 @@ class ApplicationTest {
 
     @Test
     fun testCommandParser() {
-        val parser = RegexCommandParser("CMD:login {NAME:STR} with {PASSWORD:STR} [as] [SOMEONE:INT]")
-        parser.build()
-        assertNotNull(parser.parse("login edwin with edwinpass as 2"))
+        val parser = RegexCommandParser()
+        val state = parser.build("CMD:login {NAME:STR} with {PASSWORD:STR} [as] [SOMEONE:INT]")
+
+        assertNotNull(parser.parseToArgs("login edwin with edwinpass as 2", state!!))
     }
 }

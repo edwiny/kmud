@@ -53,8 +53,8 @@ class ConnectionManager {
 class NettyWebsocketServer(val SSL: Boolean = false,
                             val PORT: Int = 8080) : NetworkServerInterface {
 
-    lateinit var newConnectionHandler: (SocketChannel) -> Boolean
-    lateinit var closeConnectionHandler: (SocketChannel) -> Boolean
+    lateinit var newConnectionHandler: (SocketChannel) -> String
+    lateinit var closeConnectionHandler: (SocketChannel) -> Unit
     lateinit var incomingDataHandler: (SocketChannel, String) -> String
     lateinit var intervalHandler: () -> Boolean
 
@@ -95,7 +95,7 @@ class NettyWebsocketServer(val SSL: Boolean = false,
                 //connMgr.broadcastSomething("schedule $currentTime")
                 this.intervalHandler()
                 //println("timer event")
-            }, 0, 1000, TimeUnit.MILLISECONDS, )
+            }, 0, 10, TimeUnit.MILLISECONDS, )
 
             /*
             while(!future.isDone && !future.await(10, TimeUnit.MILLISECONDS)) {
@@ -118,11 +118,11 @@ class NettyWebsocketServer(val SSL: Boolean = false,
         println("WebSocketServer:run() completes.")
     }
 
-    override fun newConnectionHandler(handler: (channel: SocketChannel) -> Boolean) {
+    override fun newConnectionHandler(handler: (channel: SocketChannel) -> String) {
         this.newConnectionHandler = handler
     }
 
-    override fun closeConnectionHandler(handler: (channel: SocketChannel) -> Boolean) {
+    override fun closeConnectionHandler(handler: (channel: SocketChannel) -> Unit) {
         this.closeConnectionHandler = handler
     }
 
@@ -138,24 +138,35 @@ class NettyWebsocketServer(val SSL: Boolean = false,
 }
 
 class WebSocketServerInitializer(private val sslCtx: SslContext?,
-                                 private val newConnectionHandler: (channel: SocketChannel) -> Boolean,
+                                 private val newConnectionHandler: (channel: SocketChannel) -> String,
                                  private val incomingDataHandler: (channel: SocketChannel, message: String) -> String,
-                                 private val closeConnectionHandler: (channel: SocketChannel) -> Boolean)
+                                 private val closeConnectionHandler: (channel: SocketChannel) -> Unit)
     : ChannelInitializer<SocketChannel>() {
     @Throws(Exception::class)
     public override fun initChannel(ch: SocketChannel) {
-        val pipeline = ch.pipeline()
-        if (sslCtx != null) {
-            pipeline.addLast(sslCtx.newHandler(ch.alloc()))
+        val pipeline = ch.pipeline().apply {
+            if (sslCtx != null) {
+                addLast(sslCtx.newHandler(ch.alloc()))
+            }
+            addLast(HttpServerCodec())
+            addLast(HttpObjectAggregator(65536))
+            addLast(WebSocketServerProtocolHandler(WEBSOCKET_PATH, null, true))
+            addLast(WebSocketIndexPageHandler(WEBSOCKET_PATH))
+            addLast(WebSocketFrameHandler(incomingDataHandler, closeConnectionHandler))
         }
-        pipeline.addLast(HttpServerCodec())
-        pipeline.addLast(HttpObjectAggregator(65536))
-        pipeline.addLast(WebSocketServerProtocolHandler(WEBSOCKET_PATH, null, true))
-        pipeline.addLast(WebSocketIndexPageHandler(WEBSOCKET_PATH))
-        pipeline.addLast(WebSocketFrameHandler(incomingDataHandler, closeConnectionHandler))
         println("WebSocketServerInitializer end")
         connMgr.addConn(ch)
-        newConnectionHandler(ch)
+        val text = newConnectionHandler(ch)
+
+        /*
+        if (ch.isWritable) {
+            ch.writeAndFlush(TextWebSocketFrame(text))
+            println("Sending $text to new connection")
+        } else {
+            println("incoming socket is not in a writable state")
+        }
+
+         */
     }
 
     companion object {
@@ -165,7 +176,7 @@ class WebSocketServerInitializer(private val sslCtx: SslContext?,
 
 
 class WebSocketFrameHandler(val incomingDataHandler: (channel: SocketChannel, message: String) -> String,
-                            val closeConnectionHandler: (channel: SocketChannel) -> Boolean)
+                            val closeConnectionHandler: (channel: SocketChannel) -> Unit)
     : SimpleChannelInboundHandler<WebSocketFrame>() {
     @Throws(java.lang.Exception::class)
     override fun channelRead0(ctx: ChannelHandlerContext, frame: WebSocketFrame) {

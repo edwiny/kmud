@@ -75,11 +75,16 @@ class CharGenCommand : Command() {
     }
 }
 
+
 class CharPuppetCommand : Command() {
 
     override val key = "puppet"
     override val description = "Switch to this character."
     override val spec = "CMD:$key {character:STR}"
+
+    class Args(val args: Map<String, Any?>) {
+        val character: String by args
+    }
 
     fun createAndPuppet(name: String, playerClass: String) : CommandResult {
         val character = appCtx.sessionService.createCharacter(session, name, playerClass)
@@ -88,7 +93,8 @@ class CharPuppetCommand : Command() {
     }
 
     override fun execute(cmd: String, args: Map<String, String>): CommandResult {
-        val name = args["character"]!!
+        val args = Args(args)
+        val name = args.character
         val characters = appCtx.sessionService.characters(session.account)
         val char = characters.filter { it.name == name }.firstOrNull()
         return if (char != null) {

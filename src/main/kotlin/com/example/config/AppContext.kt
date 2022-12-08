@@ -8,6 +8,7 @@ import com.example.service.AccountService
 import com.example.service.AccountServiceImp
 import com.example.service.SessionService
 import com.example.service.SessionServiceImpl
+import com.example.commands.*
 
 enum class AppProfilesEnum {
     BUILD,
@@ -18,7 +19,8 @@ class AppContext(
     val configuration: Configuration,
     val accountService: AccountService,
     val sessionService: SessionService,
-    val sessionCtxManager: SessionCtxManagerInterface
+    val sessionCtxManager: SessionCtxManagerInterface,
+    val commandRepository: CommandRepository
 )
 
 /* Create objects for all the components we'll use */
@@ -34,11 +36,25 @@ class AppContextFactory {
                         configuration,
                         accountService = AccountServiceImp(dao),
                         sessionService = sessionService,
-                        sessionCtxManager = SessionCtxManager(sessionService)
+                        sessionCtxManager = SessionCtxManager(sessionService),
+                        commandRepository = setupCommands(RegexCommandParser())
                     )
                 }
                 AppProfilesEnum.BUILD -> throw NotImplementedError("This application context has not been implemented yet: $profile")
             }
         }
+
+        fun setupCommands(parser: CommandParser): CommandRepository {
+            val mgr = CommandRepository(parser)
+            mgr.addCommand(::LoginCommand)
+            mgr.addCommand(::CharGenCommand)
+            mgr.addCommand(::CharListCommand)
+            mgr.addCommand(::CharDeleteCommand)
+            mgr.addCommand(::AccountCreateCommand)
+            mgr.addCommand(::CharPuppetCommand)
+            mgr.addCommand(::LogoutCommand)
+            return mgr
+        }
+
     }
 }

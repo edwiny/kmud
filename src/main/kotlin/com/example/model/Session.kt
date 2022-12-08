@@ -1,7 +1,5 @@
 package com.example.model
 
-import com.example.commands.Interpreter
-import io.ktor.websocket.*
 import java.time.LocalDateTime
 
 class Session(

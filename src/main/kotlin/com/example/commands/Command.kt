@@ -5,37 +5,39 @@ import com.example.model.Session
 
 open class Command {
 
+    /* Since these classes are called dynamically by class name reference, we cannot (or at least I haven't found
+       a way to) call the constructor explicitly with arguments. In stead we define a invoke() operator function.
+     */
     lateinit var appCtx: AppContext
     lateinit var session: Session
-    lateinit var parser: CommandParser
     lateinit var suppliedCommand: String
+    lateinit var args: Map<String, String>
 
     open val key = ""
     open val spec = ""
     open val description = ""
+    open val help = ""
 
     private var prompts: MutableMap<String, (e: Command, prompt: String) -> CommandResult> =
         mutableMapOf<String, (e: Command, prompt: String) -> CommandResult>()
 
-    fun initialise(appContext: AppContext, session: Session, suppliedCommand: String): Command {
+    fun initialise(appContext: AppContext, session: Session, suppliedCommand: String, args: Map<String, String>): Command {
         this.appCtx = appContext
         this.session = session
-        this.parser = RegexCommandParser(this.spec)
         this.suppliedCommand = suppliedCommand
-        if (!parser.build()) throw Exception("Failed to parse command spec ${this.spec}")
+        this.args = args
         return this
     }
 
     open fun help(detailed: Boolean) : String {
-        return "${this.key} - ${this.description}\n\n${this.parser.simpleHelpSyntax()}"
+        return "${this.key} - ${this.description}\n\n${this.help}"
     }
 
     open fun helpListing() : String {
         return "${this.key} - ${this.description}"
     }
 
-    fun parseAndExecute(input: String): CommandResult {
-        val args = this.parser.parse(input) ?: return failSyntax()
+    fun parseAndExecute(): CommandResult {
         if("help" in args) {
             return(success(help(false)))
         }
@@ -79,7 +81,6 @@ open class Command {
         )
     }
 
-
     fun success(msg: String): CommandResult {
         return CommandResult(
             CommandResultEnum.COMPLETE, msg
@@ -113,4 +114,10 @@ open class Command {
         }
         return false
     }
+    /*
+    operator fun invoke(appCtx: AppContext, session: Session, cmdKey: String): Command {
+        return initialise(appCtx, session, cmdKey)
+    }
+
+     */
 }

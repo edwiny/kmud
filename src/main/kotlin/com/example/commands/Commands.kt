@@ -3,23 +3,37 @@ package com.example.commands
 import com.example.config.AppContext
 import com.example.model.Session
 
-class CommandManager {
-    val commands = mutableMapOf<String, () -> Any>()
-    fun add(keys: List<String>, commandClass: () -> Any) {
-        for (key in keys) {
-            commands[key] = commandClass
-        }
+class CommandRepository(val parser: CommandParser) {
+
+    data class CommandPatternMapping(
+        val commandRef: () -> Any,
+        val parserState: ParserState
+    )
+
+    val commands = mutableListOf<CommandPatternMapping>()
+
+    fun addCommand(commandClass: () -> Any) {
+        val parserState = parser.build((commandClass.invoke() as Command).spec) ?:
+            throw Exception("Command spec for $commandClass failed to build")
+        commands.add(CommandPatternMapping(commandRef = commandClass, parserState = parserState))
     }
 
-    fun create(cmdKey: String, appContext: AppContext, session: Session): Command? {
-        if (cmdKey in commands) {
-            val cmd = commands[cmdKey]?.invoke() as Command
-            cmd.initialise(appContext, session, cmdKey)
+    fun createCommand(textInput: String, appContext: AppContext, session: Session): Command? {
+        var args: Map<String, String>? = mutableMapOf()
+        val pair = commands.firstOrNull {
+            print("${textInput}: trying command: ${it.parserState.spec}")
+            args = parser.parseToArgs(textInput, it.parserState )
+            args != null
+        }
+        if (pair != null) {
+            print("Found: ${pair.commandRef} / ${pair.parserState.spec}")
+            val cmd = pair.commandRef.invoke() as Command
+            cmd.initialise(appContext, session, textInput, args?: throw Exception())
             return cmd
         }
-        // invalid command
-        return null
+        print("Command not found")
 
+        return null
     }
 }
 enum class CommandResultEnum {
@@ -47,55 +61,30 @@ class CommandResult(
 )
 
 /* a instance will be created for each connection */
-class Interpreter(private val appContext: AppContext, private val session: Session) {
-    val mgr = CommandManager()
+class CommandRuntime(private val appContext: AppContext, private val session: Session) {
     var promptCmd: Command? = null
-
-
     var args: List<String> = emptyList()
-
-    init {
-        mgr.add(listOf("login"), ::LoginCommand)
-        mgr.add(listOf("chargen"), ::CharGenCommand)
-        mgr.add(listOf("charlist"), ::CharListCommand)
-        mgr.add(listOf("chardelete"), ::CharDeleteCommand)
-        mgr.add(listOf("register"), ::AccountCreateCommand)
-        mgr.add(listOf("puppet"), ::CharPuppetCommand)
-        mgr.add(listOf("logout", "quit"), ::LogoutCommand)
-    }
 
     fun resetPrompt() {
         this.promptCmd = null
     }
 
-    fun commandNameFrom(input: String): String {
-        val parts = input.split(" ").toMutableList()
-        return(parts.removeAt(0))
-    }
-
     fun process(input: String): CommandResult {
-//        try {
-            val cmdName = commandNameFrom(input)
-            if (cmdName.isBlank()) {
-                return CommandResult(
-                    CommandResultEnum.FAIL, "Huh?",
-                    CommandFailReasonEnum.INVALID
-                )
-            }
+        var result: CommandResult?
+        val cmd: Command
 
-            var result: CommandResult? = null
-            val cmd: Command
+        try {
 
             if (this.promptCmd != null) {
+                cmd = this.promptCmd ?: throw Exception("Stored promptCmd unexpectedly null")
                 println("Rerouting to prompt command")
-                cmd = this.promptCmd!!
                 resetPrompt()
-                result = cmd.executePrompt(cmdName)
+                result = cmd.executePrompt(input)
             } else {
-                cmd = mgr.create(cmdName, appContext, session) ?: return CommandResult(
-                    CommandResultEnum.FAIL, "Command $cmdName not found.", CommandFailReasonEnum.COMMAND_NOT_FOUND
+                cmd = appContext.commandRepository.createCommand(input, appContext, session) ?: return CommandResult(
+                    CommandResultEnum.FAIL, "Not recognised: $input", CommandFailReasonEnum.COMMAND_NOT_FOUND
                 )
-                result = cmd.parseAndExecute(input)
+                result = cmd.parseAndExecute()
             }
 
             when (result.status) {
@@ -108,13 +97,11 @@ class Interpreter(private val appContext: AppContext, private val session: Sessi
                 else -> {}
             }
             return result
-  /*      } catch (e: Exception) {
+        } catch (e: Exception) {
             return CommandResult(
                 CommandResultEnum.FAIL, "Uh-oh: There was an error in the program! ${e.message} ${e.cause?:"unknown cause"}",
                 CommandFailReasonEnum.INTERNAL_ERROR
             )
         }
-
-   */
     }
 }

@@ -1,9 +1,8 @@
 package com.example.network
 
 import com.example.commands.CommandResultEnum
-import com.example.commands.Interpreter
+import com.example.commands.CommandRuntime
 import com.example.config.AppContext
-import com.example.handleResponse
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -34,7 +33,7 @@ fun runKtorServer(port: Int, uri: String, appContext: AppContext) {
                 val thisConnection = KtorConnection(this)
                 val session = appContext.sessionService.emptySessionKtor()
                 connections += thisConnection
-                val interpreter = Interpreter(appContext, session)
+                val interpreter = CommandRuntime(appContext, session)
 
                 try {
                     send("You are connected! There are ${connections.count()} users here.")
@@ -51,13 +50,13 @@ fun runKtorServer(port: Int, uri: String, appContext: AppContext) {
 
                          */
                         val result = interpreter.process(receivedText)
-                        handleResponse(result)
+                        //handleResponse(result, appContext, )
                         if (result.status == CommandResultEnum.CHAIN && result.chainCommand != null) {
                             println("Doing chain command: ${result.chainCommand}")
 
 
                             val result2 = interpreter.process(result.chainCommand)
-                            handleResponse(result2)
+                            //handleResponse(result2)
                         }
                         if (result.status == CommandResultEnum.EXIT) break
                     }

@@ -57,12 +57,6 @@ class LogoutCommand : Command() {
     override val description = "Save and logout."
     override val spec = "CMD:$key"
 
-    fun createAndPuppet(name: String, playerClass: String) : CommandResult {
-        val character = appCtx.sessionService.createCharacter(session, name, playerClass)
-        appCtx.sessionService.puppetCharacter(session, character)
-        return success("You are $name the ${playerClass}.")
-    }
-
     override fun execute(cmd: String, args: Map<String, String>): CommandResult {
         appCtx.sessionService.logout(session)
         return CommandResult(status = CommandResultEnum.EXIT, "Bye!")

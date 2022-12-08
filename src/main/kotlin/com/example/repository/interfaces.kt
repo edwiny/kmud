@@ -30,8 +30,8 @@ interface DatabaseAccessInterface {
 
 
 interface NetworkServerInterface {
-    fun newConnectionHandler(handler: (channel: SocketChannel) -> Boolean)
-    fun closeConnectionHandler(handler: (channel: SocketChannel) -> Boolean)
+    fun newConnectionHandler(handler: (channel: SocketChannel) -> String)
+    fun closeConnectionHandler(handler: (channel: SocketChannel) -> Unit)
     fun incomingDataHandler(handler: (channel: SocketChannel, message: String) -> String)
     fun intervalHandler(handler: () -> Boolean)
 }
@@ -41,7 +41,7 @@ enum class MessageType {
 }
 
 
-class Message(val text: String, val type: MessageType) {
+class Message(val text: String, val type: MessageType = MessageType.TEXT) {
     override fun toString(): String {
         return text
     }

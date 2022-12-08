@@ -1,12 +1,9 @@
 package com.example.service
 
-import com.example.commands.Interpreter
-import com.example.config.AppContext
 import com.example.model.Account
 import com.example.model.Character
 import com.example.model.Session
 import com.example.repository.DatabaseAccessInterface
-import io.netty.channel.socket.SocketChannel
 import java.time.LocalDateTime
 
 interface SessionService {

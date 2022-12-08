@@ -3,15 +3,11 @@ package com.example
 import com.example.commands.CommandFailReasonEnum
 import com.example.commands.CommandResult
 import com.example.commands.CommandResultEnum
-import com.example.commands.Interpreter
 import com.example.config.*
 import com.example.network.NettyWebsocketServer
-import com.example.network.runKtorServer
-import com.example.network.sendNetworkKtor
+import com.example.repository.Message
 
-import io.ktor.server.websocket.*
 import io.netty.channel.socket.SocketChannel
-import io.netty.util.AttributeKey
 
 fun main(args: Array<String>) {
 
@@ -30,17 +26,20 @@ fun main(args: Array<String>) {
 }
 
 
-fun newConnectionHandler(appContext: AppContext, channel: SocketChannel): Boolean {
-    println("newConnectionHandler() called")
-
+fun newConnectionHandler(appContext: AppContext, channel: SocketChannel): String {
+    println("New Connection Handler called...")
     appContext.sessionCtxManager.newSessionCtxFromChannel(appContext, channel)
-    return true
+    appContext.sessionCtxManager.queueMessageByChannel(
+        Message("Welcome to Hogwarts, young student of magic!"),
+        channel
+    )
+
+    return "refactor me"
 }
 
-fun closeConnectionHandler(appContext: AppContext, channel: SocketChannel): Boolean {
+fun closeConnectionHandler(appContext: AppContext, channel: SocketChannel) {
     println("closeConnectionHandler() called")
     appContext.sessionCtxManager.deleteSessionCtxByChannel(channel)
-    return true
 }
 
 fun incomingDataHandler(appContext: AppContext, channel: SocketChannel, message: String) : String {
@@ -54,10 +53,10 @@ fun incomingDataHandler(appContext: AppContext, channel: SocketChannel, message:
         println("Doing chain command: ${result.chainCommand}")
         val result2 = sessionCtx.interpreter.process(result.chainCommand)
         response = handleResponse(result2)
-        //TODO use recursion with safeguard
+        //TODO rather use recursion with safeguard
     }
     if (result.status == CommandResultEnum.EXIT) {
-        TODO("implement exit functionality")
+        appContext.sessionCtxManager.queueCloseByChannel(channel)
     }
 
     return response
@@ -65,15 +64,9 @@ fun incomingDataHandler(appContext: AppContext, channel: SocketChannel, message:
 
 
 fun intervalHandler(appContext: AppContext) : Boolean {
-    println("intervalHandler() called")
+    appContext.sessionCtxManager.processQueue()
     return true
 }
-
-
-
-
-
-
 
 
 //suspend fun DefaultWebSocketServerSession.handleResponse(result: CommandResult) {
@@ -99,6 +92,5 @@ fun handleResponse(result: CommandResult): String {
         }
     }
     return presentation
-    //sendNetworkKtor(presentation)
 }
 
