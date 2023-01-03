@@ -1,8 +1,7 @@
 package com.example.service
 
 import com.example.model.Account
-import com.example.model.Session
-import com.example.repository.DatabaseAccessInterface
+import com.example.repository.db.DatabaseAccessInterface
 
 interface AccountService {
     fun loadAccount(login: String): Account?

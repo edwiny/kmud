@@ -1,8 +1,8 @@
-package com.example.network
+package com.example.infra.network
 
 import com.example.commands.CommandResultEnum
-import com.example.commands.CommandRuntime
-import com.example.config.AppContext
+import com.example.commands.CommandService
+import com.example.application.config.AppContext
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -33,7 +33,7 @@ fun runKtorServer(port: Int, uri: String, appContext: AppContext) {
                 val thisConnection = KtorConnection(this)
                 val session = appContext.sessionService.emptySessionKtor()
                 connections += thisConnection
-                val interpreter = CommandRuntime(appContext, session)
+                val interpreter = CommandService(appContext, session)
 
                 try {
                     send("You are connected! There are ${connections.count()} users here.")

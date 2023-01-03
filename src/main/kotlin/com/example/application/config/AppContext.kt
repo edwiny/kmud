@@ -1,14 +1,15 @@
-package com.example.config
+package com.example.application.config
 
-import com.example.ctx.SessionCtx
-import com.example.ctx.SessionCtxManager
-import com.example.ctx.SessionCtxManagerInterface
-import com.example.db.DatabaseAccess
+import com.example.application.ctx.ConnectionContextService
+import com.example.application.ctx.ConnectionContextServiceInterface
+import com.example.repository.db.DatabaseAccess
 import com.example.service.AccountService
 import com.example.service.AccountServiceImp
 import com.example.service.SessionService
 import com.example.service.SessionServiceImpl
 import com.example.commands.*
+import com.example.repository.CommandRepository
+import com.example.service.commands.*
 
 enum class AppProfilesEnum {
     BUILD,
@@ -19,7 +20,7 @@ class AppContext(
     val configuration: Configuration,
     val accountService: AccountService,
     val sessionService: SessionService,
-    val sessionCtxManager: SessionCtxManagerInterface,
+    val sessionCtxManager: ConnectionContextServiceInterface,
     val commandRepository: CommandRepository
 )
 
@@ -36,7 +37,7 @@ class AppContextFactory {
                         configuration,
                         accountService = AccountServiceImp(dao),
                         sessionService = sessionService,
-                        sessionCtxManager = SessionCtxManager(sessionService),
+                        sessionCtxManager = ConnectionContextService(sessionService),
                         commandRepository = setupCommands(RegexCommandParser())
                     )
                 }

@@ -3,7 +3,7 @@ package com.example.service
 import com.example.model.Account
 import com.example.model.Character
 import com.example.model.Session
-import com.example.repository.DatabaseAccessInterface
+import com.example.repository.db.DatabaseAccessInterface
 import java.time.LocalDateTime
 
 interface SessionService {

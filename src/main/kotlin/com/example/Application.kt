@@ -1,17 +1,21 @@
 package com.example
 
+import com.example.application.config.*
+import com.example.application.ctx.ConnectionContext
 import com.example.commands.CommandFailReasonEnum
 import com.example.commands.CommandResult
 import com.example.commands.CommandResultEnum
-import com.example.config.*
-import com.example.network.NettyWebsocketServer
-import com.example.repository.Message
+import com.example.commands.CommandService
+import com.example.infra.network.NettyWebsocketServer
+import com.example.service.dto.Message
 
 import io.netty.channel.socket.SocketChannel
 
 fun main(args: Array<String>) {
 
-    val appContext = AppContextFactory.getAppContext(AppProfilesEnum.RUNTIME, ConfigurationFactory.getConfigForEnvironment(EnvironmentEnum.DEV))
+    val appContext = AppContextFactory.getAppContext(
+        AppProfilesEnum.RUNTIME, ConfigurationFactory.getConfigForEnvironment(
+            EnvironmentEnum.DEV))
 
     val port = 8080
     val uri = "/chat"
@@ -28,7 +32,11 @@ fun main(args: Array<String>) {
 
 fun newConnectionHandler(appContext: AppContext, channel: SocketChannel): String {
     println("New Connection Handler called...")
-    appContext.sessionCtxManager.newSessionCtxFromChannel(appContext, channel)
+    val session = appContext.sessionService.emptySessionNetty()
+
+    val connectionContext = ConnectionContext(channel, CommandService(appContext, session), session)
+
+    appContext.sessionCtxManager.registerConnectionCtx(connectionContext, session, channel)
     appContext.sessionCtxManager.queueMessageByChannel(
         Message("Welcome to Hogwarts, young student of magic!"),
         channel
@@ -39,15 +47,15 @@ fun newConnectionHandler(appContext: AppContext, channel: SocketChannel): String
 
 fun closeConnectionHandler(appContext: AppContext, channel: SocketChannel) {
     println("closeConnectionHandler() called")
-    appContext.sessionCtxManager.deleteSessionCtxByChannel(channel)
+    appContext.sessionCtxManager.deleteConnectionCtxByChannel(channel)
 }
 
-fun incomingDataHandler(appContext: AppContext, channel: SocketChannel, message: String) : String {
+fun incomingDataHandler(appContext: AppContext, channel: SocketChannel, textInput: String) : String {
 
     println("incomingDataHandler() called")
 
-    val sessionCtx = appContext.sessionCtxManager.findSessionCtxByChannel(channel)
-    val result = sessionCtx!!.interpreter.process(message)
+    val sessionCtx = appContext.sessionCtxManager.findConnectionCtxByChannel(channel)
+    val result = sessionCtx!!.interpreter.process(textInput)
     var response = handleResponse(result)
     if (result.status == CommandResultEnum.CHAIN && result.chainCommand != null) {
         println("Doing chain command: ${result.chainCommand}")

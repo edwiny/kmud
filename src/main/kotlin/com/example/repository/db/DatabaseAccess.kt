@@ -1,9 +1,8 @@
-package com.example.db
+package com.example.repository.db
 
 import com.example.model.Account
 import com.example.model.Character
 import com.example.model.Session
-import com.example.repository.DatabaseAccessInterface
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.*
@@ -221,7 +220,7 @@ class DatabaseAccess(val jdbcLocation: String) : DatabaseAccessInterface {
             id = Accounts.insertAndGetId {
                 it[name] = login
                 it[admin] = isAdmin
-                it[this.pwHash] = pwHash
+                it[Accounts.pwHash] = pwHash
             }.value
         }
         return Account(

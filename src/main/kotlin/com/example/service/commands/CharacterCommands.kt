@@ -1,4 +1,6 @@
-package com.example.commands
+package com.example.service.commands
+
+import com.example.commands.CommandResult
 
 class CharListCommand : Command() {
 

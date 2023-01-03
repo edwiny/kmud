@@ -1,23 +1,22 @@
-package com.example.ctx
+package com.example.application.ctx
 
-import com.example.commands.CommandRuntime
-import com.example.config.AppContext
+import com.example.commands.CommandService
 import com.example.model.Session
-import com.example.repository.Message
+import com.example.service.dto.Message
 import com.example.service.SessionServiceImpl
 import io.netty.channel.socket.SocketChannel
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame
 
-class SessionCtx(
+class ConnectionContext(
     val channel: SocketChannel,
-    val interpreter: CommandRuntime,
+    val interpreter: CommandService,
     var session: Session
 )
 
-interface SessionCtxManagerInterface {
-    fun newSessionCtxFromChannel(appContext: AppContext, channel: SocketChannel) : SessionCtx
-    fun deleteSessionCtxByChannel(channel: SocketChannel) : Boolean
-    fun findSessionCtxByChannel(channel: SocketChannel) : SessionCtx?
+interface ConnectionContextServiceInterface {
+    fun registerConnectionCtx(connectionContext: ConnectionContext, session: Session, channel: SocketChannel)
+    fun deleteConnectionCtxByChannel(channel: SocketChannel) : Boolean
+    fun findConnectionCtxByChannel(channel: SocketChannel) : ConnectionContext?
     fun broadcast(message: Message)
     fun queueMessage(message: Message, target: Session)
     fun queueMessageByChannel(message: Message, channel: SocketChannel)
@@ -25,25 +24,22 @@ interface SessionCtxManagerInterface {
     fun processQueue()
 }
 
-class SessionCtxManager(val sessionService: SessionServiceImpl) : SessionCtxManagerInterface {
+class ConnectionContextService(val sessionService: SessionServiceImpl) : ConnectionContextServiceInterface {
 
-    val connections = mutableMapOf<SocketChannel, SessionCtx>()
-    val sessions = mutableMapOf<SessionCtx, SocketChannel>()
+    val connections = mutableMapOf<SocketChannel, ConnectionContext>()
+    val sessions = mutableMapOf<ConnectionContext, SocketChannel>()
     val queue = mutableListOf<QueuedMessage>()
     val closeQueue = mutableListOf<SocketChannel>()
 
-    data class QueuedMessage(val channel: SocketChannel, val msg:Message)
+    data class QueuedMessage(val channel: SocketChannel, val msg: Message)
 
-    override fun newSessionCtxFromChannel(appContext: AppContext, channel: SocketChannel): SessionCtx {
-        val session = sessionService.emptySessionNetty()
-        val sessionCtx = SessionCtx(channel, CommandRuntime(appContext, session), session)
-        sessions[sessionCtx] = channel
-        connections[channel] = sessionCtx
-        return sessionCtx
+    override fun registerConnectionCtx(connectionContext: ConnectionContext, session: Session, channel: SocketChannel) {
+        sessions[connectionContext] = channel
+        connections[channel] = connectionContext
     }
 
-    override fun deleteSessionCtxByChannel(channel: SocketChannel): Boolean {
-        val sessionCtx = findSessionCtxByChannel(channel) ?: throw Exception("Failed to locate channel in Session Ctx manager")
+    override fun deleteConnectionCtxByChannel(channel: SocketChannel): Boolean {
+        val sessionCtx = findConnectionCtxByChannel(channel) ?: throw Exception("Failed to locate channel in Session Ctx manager")
 
         val session = sessionService.removeSessionNetty(sessionCtx.session)
         println("[Netty] Removing session for ${sessionCtx.session.account.name}.")
@@ -53,7 +49,7 @@ class SessionCtxManager(val sessionService: SessionServiceImpl) : SessionCtxMana
 
     }
 
-    override fun findSessionCtxByChannel(channel: SocketChannel): SessionCtx? {
+    override fun findConnectionCtxByChannel(channel: SocketChannel): ConnectionContext? {
         if(channel in connections) return connections[channel]
         return null
 

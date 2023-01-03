@@ -1,4 +1,7 @@
-package com.example.commands
+package com.example.service.commands
+
+import com.example.commands.CommandResult
+import com.example.commands.CommandResultEnum
 
 class LoginCommand : Command() {
 

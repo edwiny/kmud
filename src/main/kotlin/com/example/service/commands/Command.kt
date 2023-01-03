@@ -1,6 +1,9 @@
-package com.example.commands
+package com.example.service.commands
 
-import com.example.config.AppContext
+import com.example.application.config.AppContext
+import com.example.commands.CommandFailReasonEnum
+import com.example.commands.CommandResult
+import com.example.commands.CommandResultEnum
 import com.example.model.Session
 
 open class Command {

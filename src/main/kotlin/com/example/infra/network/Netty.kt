@@ -1,7 +1,5 @@
-package com.example.network
+package com.example.infra.network
 
-import com.example.config.AppContext
-import com.example.repository.NetworkServerInterface
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufUtil
@@ -76,10 +74,12 @@ class NettyWebsocketServer(val SSL: Boolean = false,
             b.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel::class.java)
                 .handler(LoggingHandler(LogLevel.DEBUG))
-                .childHandler(WebSocketServerInitializer(sslCtx,
+                .childHandler(
+                    WebSocketServerInitializer(sslCtx,
                                                             this.newConnectionHandler,
                                                             this.incomingDataHandler,
-                                                            this.closeConnectionHandler))
+                                                            this.closeConnectionHandler)
+                )
             val ch = b.bind(PORT).sync().channel()
             println(
                 "Open your web browser and navigate to " +

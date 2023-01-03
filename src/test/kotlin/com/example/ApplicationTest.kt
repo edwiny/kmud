@@ -1,6 +1,6 @@
 package com.example
 
-import com.example.commands.RegexCommandParser
+import com.example.service.commands.RegexCommandParser
 import io.ktor.http.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*

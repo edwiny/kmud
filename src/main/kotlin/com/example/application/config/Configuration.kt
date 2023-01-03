@@ -1,4 +1,4 @@
-package com.example.config
+package com.example.application.config
 
 enum class EnvironmentEnum {
     DEV, PROD;

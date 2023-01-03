@@ -1,4 +1,4 @@
-package com.example.commands
+package com.example.service.commands
 
 import java.util.regex.Pattern
 
