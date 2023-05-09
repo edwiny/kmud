@@ -1,0 +1,34 @@
+ <!DOCTYPE html>
+<html>
+<head>
+<script>
+var ws = new WebSocket('ws://localhost:8080/chat');
+function myConnect() {
+    ws.addEventListener('open', () => {
+    // Send a message to the WebSocket server
+    ws.send('Hello from browser!');
+    });
+
+    ws.addEventListener('message', event => {
+      // The `event` object is a typical DOM event object, and the message data sent
+      // by the server is stored in the `data` property
+    console.log('Received:', event.data);
+    });
+}
+
+function mySend() {
+    ws.send("The browza!!")
+}
+</script>
+</head>
+<body>
+
+<h2>Demo JavaScript in Head</h2>
+
+<p id="demo">A Paragraph</p>
+<button type="button" onclick="myConnect()">Connect</button>
+<button type="button" onclick="mySend()">Send</button>
+
+</body>
+</html>
+
